@@ -60,6 +60,17 @@ export const arcadeScreens = {
     return h('div', { class: 'screen' },
       h('h1', {}, 'ELEGÍ UNA CARRERA'),
       h('p', { class: 'sub' }, `Misiones ${c.meta.attempts} · naves perdidas ${c.meta.deaths}`),
+      ...[(endlessCard ??= makeEndlessRace(1))].map((r) => {
+        const pr = raceProgress(c.meta, r.id, r.stages.length);
+        return h('div', { class: 'panel' },
+          h('div', { class: 'row' }, h('span', { class: 'amber' }, r.name), h('span', { class: 'k' }, r.subtitle)),
+          h('div', {}, r.blurb),
+          h('div', { class: 'row' },
+            btn('JUGAR', () => c.openHub(r), 'go'),
+            h('span', { class: pr.won ? 'good' : 'k' }, `sin fin · mejor racha ${pr.cleared}`),
+          ),
+        );
+      }),
       ...RACES.map((r) => {
         const pr = raceProgress(c.meta, r.id, r.stages.length);
         return h('div', { class: 'panel' },
@@ -75,7 +86,7 @@ export const arcadeScreens = {
         );
       }),
       h('h2', {}, 'GENERADAS'),
-      ...[(endlessCard ??= makeEndlessRace(1)), makeGrandPrix(dailySeed()), makeProceduralRace('diaria', dailySeed())].map((r) => {
+      ...[makeGrandPrix(dailySeed()), makeProceduralRace('diaria', dailySeed())].map((r) => {
         const pr = raceProgress(c.meta, r.id, r.stages.length);
         return h('div', { class: 'panel' },
           h('div', { class: 'row' }, h('span', { class: 'amber' }, r.name), h('span', { class: 'k' }, r.subtitle)),
