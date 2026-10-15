@@ -6,6 +6,7 @@ import { RACES, endingOf } from '../arcade/races';
 import { makeEndlessRace } from '../arcade/endless';
 import { dailySeed, makeGrandPrix, makeProceduralRace } from '../arcade/procgen';
 import { h } from './dom';
+import { helpArt } from './helpArt';
 
 function btn(label: string, onclick: () => void, cls = '', disabled = false): HTMLButtonElement {
   return h('button', { class: `btn ${cls}`, onclick, disabled }, label);
@@ -150,7 +151,7 @@ export const arcadeScreens = {
     return h('div', { class: 'screen' },
       h('h1', {}, 'CÓMO SE JUEGA'),
       btn('VOLVER', back, 'go'),
-      h('div', { class: 'panel' }, h('ul', { class: 'tight' }, ...ARCADE_HELP.map(([k, v]) => h('li', {}, h('span', { class: 'amber' }, `${k}: `), v)))),
+      ...ARCADE_HELP.map(([k, v]) => h('div', { class: 'panel helpitem' }, helpArt(k), h('div', { class: 'helptext' }, h('h3', {}, k), h('p', {}, v)))),
     );
   },
 
