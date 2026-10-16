@@ -66,7 +66,7 @@ export const screens = {
       ),
       h('div', { class: 'panel' },
         h('h2', {}, 'CARRERAS ARCADE'),
-        h('p', {}, 'Doce carreras (de la Guerra Fría a Kessel y Redline), un Gran Premio diario con hasta doce naves, sprints entre asteroides y un modo endless. La gravedad te empuja, las rocas chocan y morir es parte del juego.'),
+        h('p', {}, 'Trece carreras (de la Guerra Fría a Kessel y Redline, y una relámpago de dos minutos), un Gran Premio diario con hasta doce naves, sprints entre asteroides y un modo endless. La gravedad te empuja, las rocas chocan y morir es parte del juego.'),
         btn('JUGAR LAS CARRERAS', () => app.openArcade(), 'go'),
       ),
       h('div', { class: 'panel' },

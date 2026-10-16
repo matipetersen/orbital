@@ -109,6 +109,11 @@ la velocidad ideal (entre la circular y la de escape) y una escalera de velocida
 `makeGrandPrix` (en `procgen.ts`) genera cada día una grilla de 9 a 12 naves alrededor de un planeta, dos vueltas
 y aterrizaje en la Meta; el podio son los tres primeros (`StageDef.field`, `Mission.rivals`, `Mission.rank()`).
 
+### Carrera Relámpago
+
+`src/arcade/relampago.ts`: cuatro etapas fijas de unos 30 s (salto, caída libre, sprint y slalom) para una misión de unos
+2 minutos. Con los bots de prueba dura entre 119 y 126 s.
+
 ### Sprint del Gigante
 
 `src/arcade/sprint.ts`: tres sprints que salen de un planeta gigante y atraviesan entre 450 y 1100 asteroides en órbita

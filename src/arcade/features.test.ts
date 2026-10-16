@@ -6,7 +6,7 @@ import { UPGRADE_SLOTS, buyUpgrade, newMeta, shipStats, usedSlots } from './meta
 import { generateStage, makeGrandPrix, makeProceduralRace } from './procgen';
 import { Mission } from './mission';
 import { endlessDifficulty, makeEndlessRace } from './endless';
-import { RACES } from './races';
+import { RACES, endingOf } from './races';
 import { type StageDef } from './types';
 
 const stageOf = (raceId: string, name: string): StageDef => RACES.find((r) => r.id === raceId)!.stages.find((s) => s.name === name)!;
@@ -294,5 +294,15 @@ describe('endless mode', () => {
     expect(m.continues).toBe(0);
     expect(m.over).toBe('failed');
     expect(m.stagesCleared).toBe(5);
+  });
+});
+
+describe('relámpago race', () => {
+  it('is a four-stage race that sits in the race list with its own ending', () => {
+    const race = RACES.find((r) => r.id === 'relampago')!;
+    expect(race.stages).toHaveLength(4);
+    expect(race.stages.map((s) => s.id)).toEqual([1, 2, 3, 4]);
+    expect(race.stages.some((s) => s.sprint)).toBe(true);
+    expect(endingOf('relampago').winTitle).toBe('DOS MINUTOS, CUATRO ETAPAS');
   });
 });

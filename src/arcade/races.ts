@@ -4,6 +4,7 @@ import { BOONTA, HALLEY, MARTE2020, POLO_SUR, REDLINE, REUTILIZABLES, VENERA, VO
 import * as N from './more2';
 import { ASISTENCIAS } from './assist';
 import { SPRINT } from './sprint';
+import { RELAMPAGO } from './relampago';
 import { type RaceDef } from './types';
 
 /** A race with extra stages spliced in; stage numbers follow the new order. */
@@ -20,6 +21,7 @@ export const RACES: RaceDef[] = [
     blurb: 'De Sputnik a Plutón. Gravedad, honda gravitatoria y una nave rival que no te espera.',
     stages: STAGES,
   },
+  RELAMPAGO,
   KESSEL_RACE,
   ASISTENCIAS,
   SPRINT,
@@ -99,6 +101,11 @@ const ENDINGS: Record<string, { winTitle: string; win: string; lose: string }> =
   },
 };
 
+ENDINGS.relampago = {
+  winTitle: 'DOS MINUTOS, CUATRO ETAPAS',
+  win: 'Salto, caída, sprint y slalom sin respirar. Una misión entera en lo que dura un café.',
+  lose: 'Se acabó el tiempo y el rival ganó la carrera. Son solo dos minutos: la revancha está a un toque.',
+};
 ENDINGS.granpremio = {
   winTitle: 'SUBISTE AL PODIO',
   win: 'Saliste de la grilla entre once naves, sobreviviste a las dos vueltas y aterrizaste entre los tres primeros. Hoy el podio tiene tu nombre.',
