@@ -222,10 +222,12 @@ export function makeProceduralRace(kind: 'diaria' | 'sinfin', seed: number): Rac
 /**
  * The daily Grand Prix: 9 to 12 ships start from pads all round one planet and race two laps through
  * the same gates before landing on a wide finish pad. The first three to land make the podium.
+ * `size` overrides the number of ships (the endless mode runs bigger grids).
  */
-export function makeGrandPrix(seed: number): RaceDef {
+export function makeGrandPrix(seed: number, size?: number): RaceDef {
   const r = mulberry32(seed * 6151 + 99);
-  const n = 9 + Math.floor(r() * 4);
+  const roll = 9 + Math.floor(r() * 4);
+  const n = size ?? roll;
   const aName = pick(r, NAMES);
   const R0 = 300;
   const a0 = Math.round(between(r, 0, 360));

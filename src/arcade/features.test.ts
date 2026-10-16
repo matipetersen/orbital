@@ -257,8 +257,13 @@ describe('endless mode', () => {
     const m = new Mission(newMeta(), { stage: 0, race });
     const lose = (): void => {
       for (let i = 0; i < 60 && m.phase === 'countdown'; i++) m.update(0.1, { throttle: 0, turn: 0 });
-      m.rival.finished = true;
-      m.rival.finishTime = 5;
+      if (m.def.field) {
+        // A mass start is lost when the podium fills up without us.
+        for (let k = 0; k < m.def.field.podium; k++) m.arena.finishOrder.push(m.rivals[k].id);
+      } else {
+        m.rival.finished = true;
+        m.rival.finishTime = 5;
+      }
       m.update(0.1, { throttle: 0, turn: 0 });
     };
     const win = (): void => {

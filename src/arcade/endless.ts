@@ -5,7 +5,7 @@ import { makeSprintStage } from './sprint';
 import { type RaceDef, type StageDef } from './types';
 
 /** The kinds of mission the endless mode shuffles through. */
-const KINDS = ['salto', 'sprint', 'clasica', 'gauntlet', 'escala', 'gran-premio', 'carga', 'caida', 'circuito', 'clasica'] as const;
+const KINDS = ['salto', 'sprint', 'clasica', 'gauntlet', 'escala', 'gran-premio', 'gran-premio', 'carga', 'caida', 'circuito', 'clasica'] as const;
 type Kind = (typeof KINDS)[number];
 
 const STAGES_IN_RUN = 120;
@@ -74,7 +74,8 @@ export function endlessStage(seed: number, i: number): StageDef {
       def = makeSprintStage(sub, d);
       break;
     case 'gran-premio':
-      def = makeGrandPrix(sub).stages[0];
+      // Bigger grids than the daily Grand Prix (9-12 ships), growing with the difficulty: 15 to 22 ships.
+      def = makeGrandPrix(sub, 15 + Math.round(7 * d)).stages[0];
       break;
     default:
       def = pickClassic(rnd, d);
