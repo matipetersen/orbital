@@ -28,7 +28,7 @@ body{font:13px/1.45 ui-monospace,Menlo,Consolas,monospace;-webkit-user-select:no
 canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
 #overlay{position:fixed;inset:0;display:none;overflow:auto;background:rgba(2,2,10,.92);-webkit-overflow-scrolling:touch;z-index:5}
 #overlay.on{display:block}
-.screen{max-width:760px;margin:0 auto;padding:50px 16px 28px}
+.screen{max-width:760px;margin:0 auto;padding:calc(50px + env(safe-area-inset-top,0px)) calc(16px + env(safe-area-inset-right,0px)) calc(28px + env(safe-area-inset-bottom,0px)) calc(16px + env(safe-area-inset-left,0px))}
 .brand{display:flex;align-items:center;gap:14px;margin:2px 0 8px}.brand h1{margin:0}.brand .sub{margin:2px 0 0}.logo{width:76px;height:76px;border-radius:17px;box-shadow:0 0 16px rgba(0,240,255,.35),0 0 2px #fff3;flex:none}@media (max-height:520px){.logo{width:58px;height:58px;border-radius:13px}}
 .screen h1{font-size:22px;letter-spacing:.2em;margin:6px 0 2px;color:var(--ink);text-shadow:0 0 8px var(--ink)}
 .screen h2{font-size:13px;letter-spacing:.18em;margin:18px 0 8px;color:var(--amber);text-shadow:0 0 6px var(--amber);font-weight:600}
@@ -59,7 +59,7 @@ ul.tight li{margin:3px 0}
 .step.lost{border-color:var(--bad)}
 .news{color:var(--dim)}
 .tabs{position:sticky;top:0;background:rgba(2,2,10,.96);padding:6px 0;z-index:2}
-@media (max-height:520px){.screen{padding-top:46px}.screen h1{font-size:16px;margin:2px 0}.screen h2{margin:10px 0 6px}.btn{min-height:34px;padding:5px 10px;font-size:12px}.panel{padding:6px 10px}.sub{margin:0 0 4px}}
+@media (max-height:520px){.screen{padding-top:calc(46px + env(safe-area-inset-top,0px))}.screen h1{font-size:16px;margin:2px 0}.screen h2{margin:10px 0 6px}.btn{min-height:34px;padding:5px 10px;font-size:12px}.panel{padding:6px 10px}.sub{margin:0 0 4px}}
 .helpitem{display:flex;gap:14px;align-items:center}.helpfig{flex:none;width:200px}.helpfig svg{display:block;width:100%;height:auto;background:rgba(0,240,255,.04);border:1px solid rgba(42,127,136,.5)}.helptext{flex:1;min-width:0}.helptext h3{margin:0 0 4px;font-size:13px;letter-spacing:.14em;color:var(--amber);text-shadow:0 0 6px var(--amber);font-weight:600}.helptext p{margin:0}@media (max-width:560px){.helpitem{flex-direction:column;align-items:stretch;gap:8px}.helpfig{width:100%;max-width:300px;align-self:center}}
 .news .bad{color:var(--bad)}
 `;

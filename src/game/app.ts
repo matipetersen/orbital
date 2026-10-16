@@ -219,7 +219,9 @@ export class App {
   private startFlight(): void {
     const c = this.campaign!;
     const w = this.world!;
-    this.input.floating = false;
+    // Same controls as the races: one floating stick, the nose follows the finger.
+    this.input.floating = true;
+    this.input.floatTaps = true;
     const f = new Flight(w, c, this.input, this.ui);
     this.flight = f;
     this.input.reset();

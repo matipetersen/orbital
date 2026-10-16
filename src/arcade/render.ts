@@ -1,6 +1,7 @@
 import { FLOAT_REACH, ROTATE_REACH } from '../input/input';
 import { COLORS, lineStroke, neonStroke, quality } from '../render/neon';
 import { P, type View, proj, screenAngle } from '../render/view';
+import { SAFE } from '../render/safe';
 import { btn, meter, text } from '../render/hud';
 import { circlePath } from '../render/world';
 import { type Ui } from '../ui/ui';
@@ -19,6 +20,7 @@ function hexA(hex: string, a: number): string {
 }
 /** Height reserved at the top: the host app's browser bar can cover the first pixels of the page. */
 const TOP = 56;
+
 const AMBER = '#ffb000';
 const GOOD = '#7dff6b';
 const BAD = '#ff3b3b';
@@ -671,7 +673,7 @@ export function drawArcadeHud(ctx: CanvasRenderingContext2D, g: ArcadeGame, widt
   drawFloatStick(ctx, g, width, height);
 
   // Left readout.
-  const x = 10;
+  const x = Math.max(10, SAFE.left + 4);
   const speed = Math.hypot(p.vx, p.vy);
   text(ctx, 'CASCO', x, TOP + 20, COLORS.dim);
   meter(ctx, x + 48, TOP + 11, 90, p.hull / p.stats.hullMax, p.hull / p.stats.hullMax < 0.35 ? BAD : GOOD);
@@ -746,12 +748,12 @@ export function drawArcadeHud(ctx: CanvasRenderingContext2D, g: ArcadeGame, widt
   // Buttons.
   const bw = 50;
   const bh = 34;
-  const bx = width - 8 - 3 * bw - 8;
+  const bx = width - Math.max(8, SAFE.right + 4) - 3 * bw - 8;
   btn(ctx, ui, 'pause', bx, TOP + 8, bw, bh, 'PAUSA');
   btn(ctx, ui, 'kit', bx + bw + 4, TOP + 8, bw, bh, `CÁP ${m.kits}`, { dim: m.kits <= 0 || m.kitCooldown > 0, color: GOOD });
   btn(ctx, ui, 'aim', bx + 2 * (bw + 4), TOP + 8, bw, bh, 'APUNTA', { on: g.autoAim });
   btn(ctx, ui, 'zoom', bx + 2 * (bw + 4), TOP + 8 + bh + 4, bw, bh, 'ZOOM', { on: !g.input.zoomManual });
-  btn(ctx, ui, 'guide', 10, height - 48, 64, 34, 'GUÍA', { on: g.guides });
+  btn(ctx, ui, 'guide', Math.max(10, SAFE.left + 4), height - 48 - Math.round(SAFE.bottom / 2), 64, 34, 'GUÍA', { on: g.guides });
   if (p.stats.boost > 0) {
     btn(ctx, ui, 'boost', bx, TOP + 8 + bh + 4, 2 * bw + 4, bh, 'IMPULSO', { dim: p.boostCd > 0 && p.boostT <= 0, on: p.boostT > 0, color: AMBER });
   }
@@ -823,8 +825,8 @@ function drawFloatStick(ctx: CanvasRenderingContext2D, g: ArcadeGame, width: num
   const input = g.input;
   const st = input.stick;
   const R = FLOAT_REACH;
-  const ox = st ? st.ox : width * 0.8;
-  const oy = st ? st.oy : height * 0.7;
+  const ox = st ? st.ox : Math.min(width * 0.8, width - SAFE.right - R - 16);
+  const oy = st ? st.oy : Math.min(height * 0.7, height - SAFE.bottom - R - 38);
   neonStroke(ctx, COLORS.hud, 1.2, () => {
     ctx.moveTo(ox + R, oy);
     ctx.arc(ox, oy, R, 0, TAU);

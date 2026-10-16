@@ -202,3 +202,35 @@ describe('circularisation from many ascent end states', () => {
     expect('reason' in circ && circ.reason).toContain('circular');
   });
 });
+
+describe('floating stick (same controls as the races)', () => {
+  const make = (aim: { phi: number; mag: number } | null) => {
+    const c = newCampaign({ seed: 5, sandbox: true });
+    const w = createWorld(statsFor(c.techs, 'chem'), indexOf('earth'), Math.PI / 2, 0, 900);
+    const input = { update() {}, turn: 0, throttle: 0, aim, autopilot: 'node', keyCommands: [] as string[], taps: [] as unknown[], zoom: 0.3, zoomManual: false, zoomBy() {}, reset() {} } as unknown as Input;
+    const f = new Flight(w, c, input, { pressed: () => false, flush() {}, commit() {}, register() {} } as unknown as Ui);
+    f.view.up = Math.PI / 2;
+    return { w, f, input };
+  };
+
+  it('pushing up burns at full strength and turns off the autopilot', () => {
+    const { f, input } = make({ phi: Math.PI / 2, mag: 1 });
+    const ctl = f.controls();
+    expect(ctl.throttle).toBe(1);
+    expect(ctl.turn).toBeCloseTo(0, 5);
+    expect(input.autopilot).toBe('off');
+  });
+
+  it('a flying ship swings towards the finger and waits to burn until it is lined up', () => {
+    const { w, f } = make({ phi: 0, mag: 1 }); // finger points right, nose points up
+    w.ship.status = 'flying';
+    const ctl = f.controls();
+    expect(ctl.turn).toBeLessThan(0); // clockwise on screen
+    expect(ctl.throttle).toBe(0);
+  });
+
+  it('without a finger the old controls (keyboard, autopilot) are untouched', () => {
+    const { f } = make(null);
+    expect(f.controls().throttle).toBe(0);
+  });
+});

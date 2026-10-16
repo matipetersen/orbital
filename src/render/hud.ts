@@ -1,8 +1,12 @@
 import { type Flight, type HudData } from '../game/flight';
-import { ROTATE_REACH } from '../input/input';
+import { FLOAT_REACH, ROTATE_REACH } from '../input/input';
 import { type Ui } from '../ui/ui';
 import { COLORS, neonStroke } from './neon';
 import { TAU } from '../sim/units';
+import { SAFE } from './safe';
+
+/** How far the top buttons sit below the screen edge, in pixels. */
+const BUTTONS_DROP = 18;
 
 const FONT = '12px ui-monospace, Menlo, monospace';
 
@@ -37,13 +41,19 @@ export function drawHud(ctx: CanvasRenderingContext2D, f: Flight, width: number,
   const L = input.layout;
   const h = f.hud();
 
-  drawThrottle(ctx, input.throttle, L.throttleW, L.throttleTop, L.throttleBottom, h.liftoff);
-  drawStick(ctx, input, L);
-  drawReadout(ctx, h, L.throttleW + 10);
+  // With the floating stick there are no side strips to keep clear.
+  const left = input.floating ? SAFE.left : L.throttleW;
+  const right = input.floating ? width - SAFE.right : L.rotateX;
+  if (input.floating) drawFloatStick(ctx, f, width, height, h.liftoff);
+  else {
+    drawThrottle(ctx, input.throttle, L.throttleW, L.throttleTop, L.throttleBottom, h.liftoff);
+    drawStick(ctx, input, L);
+  }
+  drawReadout(ctx, h, left + 10);
   drawButtons(ctx, ui, f, h, width);
-  drawContext(ctx, ui, f, width, height, L.throttleW, L.rotateX);
-  if (f.nodePanel && h.node) drawNodePanel(ctx, ui, f, h, width, height, L.throttleW, L.rotateX);
-  drawAlerts(ctx, f, h, width, height, L.throttleW);
+  drawContext(ctx, ui, f, width, height, left, right);
+  if (f.nodePanel && h.node) drawNodePanel(ctx, ui, f, h, width, height, left, right);
+  drawAlerts(ctx, f, h, width, height, left);
   ui.commit();
 }
 
@@ -72,6 +82,43 @@ export function drawThrottle(ctx: CanvasRenderingContext2D, thr: number, zoneW: 
   neonStroke(ctx, thr > 0 ? COLORS.marker : COLORS.hud, 1.8, () => ctx.rect(x - 18, hy - 8, 36, 16));
   text(ctx, 'EMPUJE', x - 20, top - 10, COLORS.hud, 10);
   text(ctx, `${Math.round(thr * 100)}%`, x - 12, bottom + 18, COLORS.hud, 11);
+}
+
+/** The races' floating stick: a ring under the finger. Where it points is where the nose turns; pushing further burns harder. */
+function drawFloatStick(ctx: CanvasRenderingContext2D, f: Flight, width: number, height: number, liftoff: number | null): void {
+  const input = f.input;
+  const st = input.stick;
+  const R = FLOAT_REACH;
+  const ox = st ? st.ox : Math.min(width * 0.8, width - SAFE.right - R - 16);
+  const oy = st ? st.oy : Math.min(height * 0.7, height - SAFE.bottom - R - 38);
+  neonStroke(ctx, COLORS.hud, 1.2, () => {
+    ctx.moveTo(ox + R, oy);
+    ctx.arc(ox, oy, R, 0, TAU);
+    ctx.moveTo(ox + 10, oy);
+    ctx.arc(ox, oy, 10, 0, TAU);
+  }, st ? 0.8 : 0.35);
+  if (st) {
+    const dx = st.x - st.ox;
+    const dy = st.y - st.oy;
+    const d = Math.hypot(dx, dy) || 1;
+    const k = Math.min(R, d);
+    neonStroke(ctx, input.aim ? COLORS.marker : COLORS.hud, 1.8, () => {
+      ctx.moveTo(ox + (dx / d) * k + 12, oy + (dy / d) * k);
+      ctx.arc(ox + (dx / d) * k, oy + (dy / d) * k, 12, 0, TAU);
+    });
+    // The push that just lifts the ship off the ground.
+    if (liftoff !== null) {
+      const rr = 10 + Math.min(1, liftoff) * R * 0.6;
+      neonStroke(ctx, liftoff <= 1 ? COLORS.good : COLORS.danger, 1.4, () => {
+        ctx.moveTo(ox + rr, oy);
+        ctx.arc(ox, oy, rr, 0, TAU);
+      }, 0.7);
+    }
+  } else {
+    text(ctx, 'APOYÁ Y APUNTÁ', ox - 44, oy - R - 8, COLORS.dim, 10);
+    text(ctx, 'ARRASTRÁ HACIA DONDE IR', ox - 58, oy + R + 16, COLORS.dim, 10);
+  }
+  text(ctx, `EMPUJE ${Math.round(input.throttle * 100)}%`, ox - 36, oy + R + 32, input.throttle > 0 ? COLORS.marker : COLORS.dim, 10);
 }
 
 export function drawStick(ctx: CanvasRenderingContext2D, input: Flight['input'], L: Flight['input']['layout']): void {
@@ -111,10 +158,10 @@ function drawReadout(ctx: CanvasRenderingContext2D, h: HudData, x: number): void
   ctx.font = FONT;
   ctx.globalAlpha = 0.95;
   rows.forEach(([k, v, c], i) => {
-    text(ctx, k, x, 22 + i * 15, COLORS.dim);
-    text(ctx, v, x + 46, 22 + i * 15, c ?? COLORS.hud);
+    text(ctx, k, x, 22 + SAFE.top + i * 15, COLORS.dim);
+    text(ctx, v, x + 46, 22 + SAFE.top + i * 15, c ?? COLORS.hud);
   });
-  let y = 22 + rows.length * 15;
+  let y = 22 + SAFE.top + rows.length * 15;
   if (h.heat > 0.02) {
     text(ctx, 'CALOR', x, y, COLORS.dim);
     meter(ctx, x + 46, y - 9, 70, h.heat, h.heat > 0.7 ? COLORS.danger : COLORS.marker);
@@ -144,12 +191,19 @@ export function meter(ctx: CanvasRenderingContext2D, x: number, y: number, w: nu
   neonStroke(ctx, COLORS.dim, 1, () => ctx.rect(x - 2, y - 2, w + 2, 12), 0.5);
 }
 
+/** Left edge of the top-right button grid (4 columns), clear of the screen's right inset. */
+function buttonsLeft(width: number): number {
+  return width - Math.max(8, SAFE.right + 4) - 4 * 46 - 3 * 4;
+}
+
 function drawButtons(ctx: CanvasRenderingContext2D, ui: Ui, f: Flight, h: HudData, width: number): void {
   const bw = 46;
   const bh = 32;
   const gap = 4;
-  const x0 = width - 8 - 4 * bw - 3 * gap;
-  const cell = (r: number, c: number): [number, number] => [x0 + c * (bw + gap), 8 + r * (bh + gap)];
+  const x0 = buttonsLeft(width);
+  // Dropped a little below the top edge: easier to reach and clear of the rounded corners.
+  const top = Math.max(8, SAFE.top) + BUTTONS_DROP;
+  const cell = (r: number, c: number): [number, number] => [x0 + c * (bw + gap), top + r * (bh + gap)];
   const ap = h.autopilot;
   let [x, y] = cell(0, 0);
   btn(ctx, ui, 'pro', x, y, bw, bh, 'PRO', { on: ap === 'prograde' });
@@ -259,7 +313,7 @@ function drawAlerts(ctx: CanvasRenderingContext2D, f: Flight, h: HudData, width:
   if (h.coach) {
     // Advice sits at the top, in the free band between the readout and the button grid.
     const left = throttleW + 150;
-    const right = width - 8 - 4 * 50 - 8;
+    const right = buttonsLeft(width) - 10;
     drawCoach(ctx, h.coach, left, Math.max(left + 140, right), y + 4);
   }
   const mid = height * 0.55;
@@ -280,7 +334,7 @@ function drawAlerts(ctx: CanvasRenderingContext2D, f: Flight, h: HudData, width:
   } else if (h.status === 'landed' && f.hasFlown) {
     text(ctx, `ATERRIZAJE CORRECTO (${h.impactSpeed.toFixed(1)} u/s)`, cx, mid, COLORS.good, 15, true);
   } else if (h.status === 'landed') {
-    text(ctx, 'SUBÍ EL EMPUJE (IZQUIERDA) PARA DESPEGAR', cx, mid, COLORS.hud, 14, true);
+    text(ctx, 'ARRASTRÁ HACIA ARRIBA PARA DESPEGAR', cx, mid, COLORS.hud, 14, true);
   }
   if (height > width) text(ctx, 'GIRÁ EL TELÉFONO A HORIZONTAL', cx, height * 0.12, COLORS.marker, 14, true);
 }

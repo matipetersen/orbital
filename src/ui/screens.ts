@@ -44,8 +44,7 @@ function recordRow(r: RecordEntry, i: number): HTMLElement {
 
 const HELP: [string, string][] = [
   ['Objetivo', 'Ser el primero en aterrizar en Plutón y plantar la bandera. El rival avanza con el calendario: cada día que esperás, avanza.'],
-  ['Empuje', 'Arrastrá en la franja izquierda. Tiene memoria: queda donde lo soltás.'],
-  ['Giro', 'Arrastrá a los lados en la zona inferior derecha. PRO y RET apuntan la nave sola.'],
+  ['Controles', 'Igual que en las carreras: apoyá el dedo donde quieras y arrastrá hacia donde querés ir. La nave gira hacia esa dirección y empuja cuando queda alineada; cuanto más lejos arrastrás, más empuje. Al soltar se apaga el motor. Para despegar, el aro verde marca el empuje mínimo para salir del suelo. PRO y RET apuntan la nave sola.'],
   ['Zoom', 'Pellizcá, o usá − y +. Alejá todo el zoom para ver el sistema solar.'],
   ['Tiempo', 'W+ y W− aceleran el tiempo. Con el motor encendido o dentro de una atmósfera queda en x1.'],
   ['Destino', 'OBJ elige un cuerpo (o tocalo en el mapa). MARCO dibuja la trayectoria vista desde otro cuerpo, que es como se ve un encuentro.'],
@@ -54,7 +53,7 @@ const HELP: [string, string][] = [
   ['Aterrizar', 'Despacio (menos de 12 u/s), derecho y sobre terreno poco inclinado. Las franjas amarillas son planas.'],
   ['Bandera y base', 'Aterrizado en una franja: BANDERA, BASE y RECARGA. Las bases producen combustible con el tiempo.'],
   ['Eventos', 'Asteroides, fallas y política interrumpen el tiempo. Hay aviso y siempre hay respuesta: una corrección pequeña, sellar una válvula, esperar.'],
-  ['Teclado', 'A/D girar · W/S empuje · Z/X máximo/corte · P/R pro/retro · N nodo · . , tiempo · T objetivo · F marco · E sellar · B/U bandera/base'],
+  ['Teclado', 'A/D girar · W/S empuje (mantenido) · Z/X máximo/corte · P/R pro/retro · N nodo · . , tiempo · T objetivo · F marco · E sellar · B/U bandera/base'],
 ];
 
 export const screens = {
