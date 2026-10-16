@@ -3,6 +3,10 @@ import { FLOAT_REACH, ROTATE_REACH } from '../input/input';
 import { type Ui } from '../ui/ui';
 import { COLORS, neonStroke } from './neon';
 import { TAU } from '../sim/units';
+import { SAFE } from './safe';
+
+/** How far the top buttons sit below the screen edge, in pixels. */
+const BUTTONS_DROP = 18;
 
 const FONT = '12px ui-monospace, Menlo, monospace';
 
@@ -38,8 +42,8 @@ export function drawHud(ctx: CanvasRenderingContext2D, f: Flight, width: number,
   const h = f.hud();
 
   // With the floating stick there are no side strips to keep clear.
-  const left = input.floating ? 0 : L.throttleW;
-  const right = input.floating ? width : L.rotateX;
+  const left = input.floating ? SAFE.left : L.throttleW;
+  const right = input.floating ? width - SAFE.right : L.rotateX;
   if (input.floating) drawFloatStick(ctx, f, width, height, h.liftoff);
   else {
     drawThrottle(ctx, input.throttle, L.throttleW, L.throttleTop, L.throttleBottom, h.liftoff);
@@ -85,8 +89,8 @@ function drawFloatStick(ctx: CanvasRenderingContext2D, f: Flight, width: number,
   const input = f.input;
   const st = input.stick;
   const R = FLOAT_REACH;
-  const ox = st ? st.ox : width * 0.8;
-  const oy = st ? st.oy : height * 0.7;
+  const ox = st ? st.ox : Math.min(width * 0.8, width - SAFE.right - R - 16);
+  const oy = st ? st.oy : Math.min(height * 0.7, height - SAFE.bottom - R - 38);
   neonStroke(ctx, COLORS.hud, 1.2, () => {
     ctx.moveTo(ox + R, oy);
     ctx.arc(ox, oy, R, 0, TAU);
@@ -154,10 +158,10 @@ function drawReadout(ctx: CanvasRenderingContext2D, h: HudData, x: number): void
   ctx.font = FONT;
   ctx.globalAlpha = 0.95;
   rows.forEach(([k, v, c], i) => {
-    text(ctx, k, x, 22 + i * 15, COLORS.dim);
-    text(ctx, v, x + 46, 22 + i * 15, c ?? COLORS.hud);
+    text(ctx, k, x, 22 + SAFE.top + i * 15, COLORS.dim);
+    text(ctx, v, x + 46, 22 + SAFE.top + i * 15, c ?? COLORS.hud);
   });
-  let y = 22 + rows.length * 15;
+  let y = 22 + SAFE.top + rows.length * 15;
   if (h.heat > 0.02) {
     text(ctx, 'CALOR', x, y, COLORS.dim);
     meter(ctx, x + 46, y - 9, 70, h.heat, h.heat > 0.7 ? COLORS.danger : COLORS.marker);
@@ -187,12 +191,19 @@ export function meter(ctx: CanvasRenderingContext2D, x: number, y: number, w: nu
   neonStroke(ctx, COLORS.dim, 1, () => ctx.rect(x - 2, y - 2, w + 2, 12), 0.5);
 }
 
+/** Left edge of the top-right button grid (4 columns), clear of the screen's right inset. */
+function buttonsLeft(width: number): number {
+  return width - Math.max(8, SAFE.right + 4) - 4 * 46 - 3 * 4;
+}
+
 function drawButtons(ctx: CanvasRenderingContext2D, ui: Ui, f: Flight, h: HudData, width: number): void {
   const bw = 46;
   const bh = 32;
   const gap = 4;
-  const x0 = width - 8 - 4 * bw - 3 * gap;
-  const cell = (r: number, c: number): [number, number] => [x0 + c * (bw + gap), 8 + r * (bh + gap)];
+  const x0 = buttonsLeft(width);
+  // Dropped a little below the top edge: easier to reach and clear of the rounded corners.
+  const top = Math.max(8, SAFE.top) + BUTTONS_DROP;
+  const cell = (r: number, c: number): [number, number] => [x0 + c * (bw + gap), top + r * (bh + gap)];
   const ap = h.autopilot;
   let [x, y] = cell(0, 0);
   btn(ctx, ui, 'pro', x, y, bw, bh, 'PRO', { on: ap === 'prograde' });
@@ -302,7 +313,7 @@ function drawAlerts(ctx: CanvasRenderingContext2D, f: Flight, h: HudData, width:
   if (h.coach) {
     // Advice sits at the top, in the free band between the readout and the button grid.
     const left = throttleW + 150;
-    const right = width - 8 - 4 * 50 - 8;
+    const right = buttonsLeft(width) - 10;
     drawCoach(ctx, h.coach, left, Math.max(left + 140, right), y + 4);
   }
   const mid = height * 0.55;

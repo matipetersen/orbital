@@ -3,6 +3,7 @@ import { Audio } from './game/audio';
 import { Input } from './input/input';
 import { Ui } from './ui/ui';
 import { quality } from './render/neon';
+import { SAFE, measureSafe } from './render/safe';
 import { Overlay, injectCss } from './ui/dom';
 
 injectCss();
@@ -16,6 +17,7 @@ const app = new App(canvas, ctx, ui, input, overlay, audio);
 
 let dprMax = 1.5;
 function resize(): void {
+  measureSafe();
   const width = window.innerWidth;
   const height = window.innerHeight;
   const dpr = Math.min(window.devicePixelRatio || 1, dprMax);
@@ -44,6 +46,7 @@ if (new URLSearchParams(location.search).has('debug')) {
     },
     input,
     quality,
+    safe: SAFE,
   };
 }
 
