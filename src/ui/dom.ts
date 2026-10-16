@@ -60,6 +60,7 @@ ul.tight li{margin:3px 0}
 .news{color:var(--dim)}
 .tabs{position:sticky;top:0;background:rgba(2,2,10,.96);padding:6px 0;z-index:2}
 @media (max-height:520px){.screen{padding-top:46px}.screen h1{font-size:16px;margin:2px 0}.screen h2{margin:10px 0 6px}.btn{min-height:34px;padding:5px 10px;font-size:12px}.panel{padding:6px 10px}.sub{margin:0 0 4px}}
+.helpitem{display:flex;gap:14px;align-items:center}.helpfig{flex:none;width:200px}.helpfig svg{display:block;width:100%;height:auto;background:rgba(0,240,255,.04);border:1px solid rgba(42,127,136,.5)}.helptext{flex:1;min-width:0}.helptext h3{margin:0 0 4px;font-size:13px;letter-spacing:.14em;color:var(--amber);text-shadow:0 0 6px var(--amber);font-weight:600}.helptext p{margin:0}@media (max-width:560px){.helpitem{flex-direction:column;align-items:stretch;gap:8px}.helpfig{width:100%;max-width:300px;align-self:center}}
 .news .bad{color:var(--bad)}
 `;
 
