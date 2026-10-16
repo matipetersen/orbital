@@ -177,6 +177,18 @@ export class Flight {
       }
     }
     const blackout = w.ship.blackoutUntil > w.time;
+    // Floating stick (same as the races): the nose swings to where the finger points and burns once it is lined up.
+    const aim = this.input.aim;
+    if (aim && !blackout && w.ship.status !== 'crashed') {
+      this.input.autopilot = 'off';
+      const want = this.view.up - Math.PI / 2 + aim.phi;
+      const err = Math.atan2(Math.sin(want - w.ship.angle), Math.cos(want - w.ship.angle));
+      const turn = Math.max(-1, Math.min(1, err * 4));
+      // Landed ships cannot rotate on the pad, so there the push only has to beat gravity.
+      const lined = w.ship.status === 'landed' ? 1 : Math.max(0, Math.min(1, 1.6 - Math.abs(err) / 0.45));
+      this.input.throttle = aim.mag * lined;
+      return { throttle: this.input.throttle, turn };
+    }
     const turn =
       this.input.turn !== 0 || blackout
         ? this.input.turn
@@ -194,7 +206,7 @@ export class Flight {
       this.autoBurn = false;
       return;
     }
-    if (this.input.turn !== 0) {
+    if (this.input.turn !== 0 || this.input.aim) {
       this.autoBurn = false;
       this.toast('QUEMA AUTOMÁTICA CANCELADA', 'info');
       return;
@@ -358,7 +370,7 @@ export class Flight {
       this.pred = null;
       return;
     }
-    const moving = this.input.throttle > 0 || this.input.turn !== 0;
+    const moving = this.input.throttle > 0 || this.input.turn !== 0 || !!this.input.aim;
     if (!this.predDirty && !(moving && this.predTimer <= 0) && this.predTimer > -1.5) return;
     if (this.predTimer > 0 && !this.predDirty) return;
     this.predDirty = false;
@@ -437,7 +449,7 @@ export class Flight {
     const lt = this.liftoffThrottle();
     if (lt !== null && !this.hasFlown) {
       if (lt > 1) return 'La nave pesa demasiado para despegar: en el centro de control cargá menos combustible.';
-      return `Subí el empuje (franja izquierda) por encima de la marca amarilla, ${Math.ceil(lt * 100)}%, para despegar.`;
+      return `Apoyá el dedo y arrastrá hacia arriba: hace falta pasar del aro verde (${Math.ceil(lt * 100)}% de empuje) para despegar.`;
     }
     if (s.status === 'landed') return this.landedSite() ? 'Aterrizaste en terreno plano: abajo podés plantar la bandera o instalar una base.' : null;
     const rs = refState(w);

@@ -1,5 +1,5 @@
 import { type Flight, type HudData } from '../game/flight';
-import { ROTATE_REACH } from '../input/input';
+import { FLOAT_REACH, ROTATE_REACH } from '../input/input';
 import { type Ui } from '../ui/ui';
 import { COLORS, neonStroke } from './neon';
 import { TAU } from '../sim/units';
@@ -37,13 +37,19 @@ export function drawHud(ctx: CanvasRenderingContext2D, f: Flight, width: number,
   const L = input.layout;
   const h = f.hud();
 
-  drawThrottle(ctx, input.throttle, L.throttleW, L.throttleTop, L.throttleBottom, h.liftoff);
-  drawStick(ctx, input, L);
-  drawReadout(ctx, h, L.throttleW + 10);
+  // With the floating stick there are no side strips to keep clear.
+  const left = input.floating ? 0 : L.throttleW;
+  const right = input.floating ? width : L.rotateX;
+  if (input.floating) drawFloatStick(ctx, f, width, height, h.liftoff);
+  else {
+    drawThrottle(ctx, input.throttle, L.throttleW, L.throttleTop, L.throttleBottom, h.liftoff);
+    drawStick(ctx, input, L);
+  }
+  drawReadout(ctx, h, left + 10);
   drawButtons(ctx, ui, f, h, width);
-  drawContext(ctx, ui, f, width, height, L.throttleW, L.rotateX);
-  if (f.nodePanel && h.node) drawNodePanel(ctx, ui, f, h, width, height, L.throttleW, L.rotateX);
-  drawAlerts(ctx, f, h, width, height, L.throttleW);
+  drawContext(ctx, ui, f, width, height, left, right);
+  if (f.nodePanel && h.node) drawNodePanel(ctx, ui, f, h, width, height, left, right);
+  drawAlerts(ctx, f, h, width, height, left);
   ui.commit();
 }
 
@@ -72,6 +78,43 @@ export function drawThrottle(ctx: CanvasRenderingContext2D, thr: number, zoneW: 
   neonStroke(ctx, thr > 0 ? COLORS.marker : COLORS.hud, 1.8, () => ctx.rect(x - 18, hy - 8, 36, 16));
   text(ctx, 'EMPUJE', x - 20, top - 10, COLORS.hud, 10);
   text(ctx, `${Math.round(thr * 100)}%`, x - 12, bottom + 18, COLORS.hud, 11);
+}
+
+/** The races' floating stick: a ring under the finger. Where it points is where the nose turns; pushing further burns harder. */
+function drawFloatStick(ctx: CanvasRenderingContext2D, f: Flight, width: number, height: number, liftoff: number | null): void {
+  const input = f.input;
+  const st = input.stick;
+  const R = FLOAT_REACH;
+  const ox = st ? st.ox : width * 0.8;
+  const oy = st ? st.oy : height * 0.7;
+  neonStroke(ctx, COLORS.hud, 1.2, () => {
+    ctx.moveTo(ox + R, oy);
+    ctx.arc(ox, oy, R, 0, TAU);
+    ctx.moveTo(ox + 10, oy);
+    ctx.arc(ox, oy, 10, 0, TAU);
+  }, st ? 0.8 : 0.35);
+  if (st) {
+    const dx = st.x - st.ox;
+    const dy = st.y - st.oy;
+    const d = Math.hypot(dx, dy) || 1;
+    const k = Math.min(R, d);
+    neonStroke(ctx, input.aim ? COLORS.marker : COLORS.hud, 1.8, () => {
+      ctx.moveTo(ox + (dx / d) * k + 12, oy + (dy / d) * k);
+      ctx.arc(ox + (dx / d) * k, oy + (dy / d) * k, 12, 0, TAU);
+    });
+    // The push that just lifts the ship off the ground.
+    if (liftoff !== null) {
+      const rr = 10 + Math.min(1, liftoff) * R * 0.6;
+      neonStroke(ctx, liftoff <= 1 ? COLORS.good : COLORS.danger, 1.4, () => {
+        ctx.moveTo(ox + rr, oy);
+        ctx.arc(ox, oy, rr, 0, TAU);
+      }, 0.7);
+    }
+  } else {
+    text(ctx, 'APOYÁ Y APUNTÁ', ox - 44, oy - R - 8, COLORS.dim, 10);
+    text(ctx, 'ARRASTRÁ HACIA DONDE IR', ox - 58, oy + R + 16, COLORS.dim, 10);
+  }
+  text(ctx, `EMPUJE ${Math.round(input.throttle * 100)}%`, ox - 36, oy + R + 32, input.throttle > 0 ? COLORS.marker : COLORS.dim, 10);
 }
 
 export function drawStick(ctx: CanvasRenderingContext2D, input: Flight['input'], L: Flight['input']['layout']): void {
@@ -280,7 +323,7 @@ function drawAlerts(ctx: CanvasRenderingContext2D, f: Flight, h: HudData, width:
   } else if (h.status === 'landed' && f.hasFlown) {
     text(ctx, `ATERRIZAJE CORRECTO (${h.impactSpeed.toFixed(1)} u/s)`, cx, mid, COLORS.good, 15, true);
   } else if (h.status === 'landed') {
-    text(ctx, 'SUBÍ EL EMPUJE (IZQUIERDA) PARA DESPEGAR', cx, mid, COLORS.hud, 14, true);
+    text(ctx, 'ARRASTRÁ HACIA ARRIBA PARA DESPEGAR', cx, mid, COLORS.hud, 14, true);
   }
   if (height > width) text(ctx, 'GIRÁ EL TELÉFONO A HORIZONTAL', cx, height * 0.12, COLORS.marker, 14, true);
 }

@@ -65,6 +65,8 @@ export class Input {
   enabled = true;
   /** Arcade scheme: one floating stick wherever the finger lands. Up thrusts, down brakes, sideways turns. */
   floating = false;
+  /** Floating scheme only: a short tap with no drag still counts as a map tap (the simulator selects targets with it). */
+  floatTaps = false;
   /** Brake request, 0..1 (floating stick pulled back). */
   brake = 0;
   /** Floating stick direction (screen angle, CCW from right) and strength; null inside the dead zone. */
@@ -215,6 +217,7 @@ export class Input {
       this.throttle = 0;
       this.brake = 0;
       this.aim = null;
+      if (this.floatTaps && p.moved < 10 && performance.now() - p.startTime < 400 && this.pointers.size === 0) this.taps.push({ x: p.x, y: p.y });
     }
     if (p.zone === 'camera' && p.moved < 10 && performance.now() - p.startTime < 400 && this.pointers.size === 0) {
       this.taps.push({ x: p.x, y: p.y });
