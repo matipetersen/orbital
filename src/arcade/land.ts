@@ -10,6 +10,14 @@ const wrap = (a: number): number => {
 const clamp = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v));
 
 const G = { x: 0, y: 0 };
+/** Speed the guidance aims to touch down at: well under the 60 u/s limit, but no slow creep over the pad. */
+const TOUCH_SPEED = 22;
+/** Share of the available deceleration the descent profile counts on, leaving room for steering and lag. */
+const BRAKE_SHARE = 0.6;
+/** Seconds the ship needs to swing its nose round and light the engine before braking really starts. */
+const REACTION = 0.7;
+/** Fastest sink the guidance ever asks for, however strong the engine. */
+const SINK_MAX = 150;
 const PT = { x: 0, y: 0 };
 const GT = { x: 0, y: 0 };
 
@@ -55,7 +63,14 @@ export function landControl(arena: Arena, ship: Ship, tgt: LandTarget): Controls
   const l = qx * tx + qy * ty;
   const vn = vx * nx + vy * ny;
   const vt = vx * tx + vy * ty;
-  const amax = Math.max(20, ship.stats.thrust * 0.75 - body.def.g);
+  // Braking with the nose up fights gravity; sliding sideways does not.
+  const aUp = Math.max(8, ship.stats.thrust - body.def.g);
+  const aSide = ship.stats.thrust * 0.6;
+  // Fastest sink at height hh that can still be braked to TOUCH_SPEED at the ground (a suicide burn with margin),
+  // counting the distance fallen while the nose swings round: v² + 2·a·τ·v ≤ vT² + 2·a·h.
+  const aB = BRAKE_SHARE * aUp;
+  const sink = (hh: number): number =>
+    -Math.min(SINK_MAX, Math.max(TOUCH_SPEED, -aB * REACTION + Math.sqrt(aB * aB * REACTION * REACTION + TOUCH_SPEED * TOUCH_SPEED + 2 * aB * Math.max(hh - 4, 0))));
 
   // Until the last gate is behind us, the target is the gate (it hangs over the pad); then it is the pad itself.
   let tgtL = 0;
@@ -71,22 +86,26 @@ export function landControl(arena: Arena, ship: Ship, tgt: LandTarget): Controls
   const dl = l - tgtL;
   // Over the target when the sideways offset is small for the height; otherwise stay up and slide across.
   const aligned = Math.abs(dl) < 16 + Math.abs(h - tgtH) * 0.3;
-  let vtDes = clamp(-1.5 * dl, -110, 110);
-  const vtMax = Math.sqrt(2 * 0.45 * amax * Math.abs(dl));
+  // Real height over the curved surface: away from the pad it is lower than the height over the pad's plane.
+  const alt = Math.hypot(qx, qy) - (body.def.r + SHIP_R);
+  let vtDes = clamp(-1.5 * dl, -160, 160);
+  // Sliding across fast is fine high up; low over the ground it has to slow down.
+  const vtMax = Math.min(Math.sqrt(2 * 0.45 * aSide * Math.abs(dl)), 50 + Math.max(alt, 0) * 1.2);
   vtDes = clamp(vtDes, -vtMax, vtMax);
   let vnDes: number;
   if (pending) {
-    if (aligned) vnDes = clamp((tgtH - h) * 0.7, -35, 45);
-    else vnDes = clamp((tgtH + 60 + Math.min(160, Math.abs(dl) * 0.2) - h) * 0.8, -30, 45);
-    vnDes = Math.max(vnDes, -Math.sqrt(2 * 0.3 * amax * Math.max(h - 15, 0)) - 4);
+    // The ring can be crossed at speed; only the ground below sets the limit.
+    if (aligned) vnDes = clamp((tgtH - h) * 1.2, -400, 45);
+    else vnDes = clamp((tgtH + 60 + Math.min(160, Math.abs(dl) * 0.2) - h) * 0.8, -60, 45);
+    vnDes = Math.max(vnDes, sink(h));
   } else if (aligned) {
-    vnDes = -clamp(0.5 * h + 5, 5, 36);
-    // Never ask for a descent the engine cannot stop in time.
-    vnDes = Math.max(vnDes, -Math.sqrt(2 * 0.3 * amax * Math.max(h - 15, 0)) - 4);
+    vnDes = sink(h);
   } else {
     const hold = 80 + Math.min(160, Math.abs(dl) * 0.2);
-    vnDes = clamp((hold - h) * 0.8, -30, 45);
+    vnDes = clamp((hold - Math.min(h, alt)) * 0.8, -30, 45);
   }
+  // Not over the pad yet and close to the ground: climb first.
+  if (!aligned && alt < 40) vnDes = Math.max(vnDes, 30);
   const k = 2.2;
   let ax = k * (vtDes - vt) * tx + k * (vnDes - vn) * nx;
   let ay = k * (vtDes - vt) * ty + k * (vnDes - vn) * ny;
