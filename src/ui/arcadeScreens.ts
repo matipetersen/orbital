@@ -31,6 +31,7 @@ const ARCADE_HELP: [string, string][] = [
   ['Cápsulas', 'Tocá CÁP para recuperar combustible y casco. Se recargan en cada estación.'],
   ['Rival', 'Sale en el mismo instante que vos (nadie espera en la largada), corre a la vez y se pueden chocar. Su fuerza se cambia en el centro de misión: RIVAL FÁCIL, NORMAL o DIFÍCIL. Un golpe fuerte lo frena a él también.'],
   ['Práctica', 'Las etapas que ya alcanzaste se pueden practicar sin vidas ni recompensas, con la nave básica.'],
+  ['Campeonato', 'Ocho Grandes Premios con veinte naves y tres vueltas. Puntos para los diez primeros (25, 18, 15...). Cuando aterriza el ganador tenés 45 s antes de la bandera a cuadros. Entre carreras elegís la configuración (motor y casco), comprás mejoras con los créditos del equipo y tomás decisiones de escudería. Si te falta combustible, aterrizá en tu plataforma: es tu box y recarga todo.'],
 ];
 
 let endlessCard: ReturnType<typeof makeEndlessRace> | null = null;
@@ -159,21 +160,22 @@ export const arcadeScreens = {
     const m = c.mission;
     const def = m.def;
     return h('div', { class: 'screen' },
-      h('p', { class: 'sub' }, `${def.year ? `${def.year} · ` : ''}etapa ${def.id}${m.race.endless ? '' : ` de ${c.mission.stageCount}`}${m.practice ? ' · PRÁCTICA' : ''}`),
+      h('p', { class: 'sub' }, c.seasonRace ? m.race.subtitle : `${def.year ? `${def.year} · ` : ''}etapa ${def.id}${m.race.endless ? '' : ` de ${c.mission.stageCount}`}${m.practice ? ' · PRÁCTICA' : ''}`),
       h('h1', {}, def.name.toUpperCase()),
       h('p', { class: 'amber' }, `Dificultad ${skulls(def.skulls)}`),
       h('p', {}, def.blurb),
       ...(stageNotes(def).length ? [h('ul', { class: 'tight' }, ...stageNotes(def).map((n) => h('li', {}, n)))] : []),
       h('div', { class: 'panel' },
         def.field ? kv('Naves en la grilla', String(def.field.slots.length + 1), 'bad') : kv('Rival', def.rival.name, 'bad'),
-        kv('Aros', String(def.gates.length)),
+        def.field ? kv('Vueltas', String(def.field.laps)) : null,
+        kv('Aros', def.field ? `${def.gates.length} por vuelta` : String(def.gates.length)),
         kv('Vidas', m.practice ? 'sin límite' : `${m.lives}`),
         kv('Cápsulas', String(m.kits)),
         kv('Datos que llevás', String(m.carried)),
       ),
       h('div', { class: 'row' },
         btn('LISTO', () => c.begin(), 'go'),
-        btn('ABANDONAR', () => c.openPauseExit(), 'bad'),
+        c.seasonRace ? btn('VOLVER AL BOX', () => c.openSeason()) : btn('ABANDONAR', () => c.openPauseExit(), 'bad'),
       ),
     );
   },
@@ -182,11 +184,11 @@ export const arcadeScreens = {
     const m = c.mission;
     return h('div', { class: 'screen' },
       h('h1', {}, 'PAUSA'),
-      h('p', { class: 'sub' }, `Etapa ${m.def.id} · ${m.practice ? 'práctica' : `vidas ${m.lives}`} · datos en mano ${m.carried}`),
+      h('p', { class: 'sub' }, c.seasonRace ? `${m.def.name} · vidas ${m.lives}` : `Etapa ${m.def.id} · ${m.practice ? 'práctica' : `vidas ${m.lives}`} · datos en mano ${m.carried}`),
       h('div', { class: 'row' },
         btn('CONTINUAR', () => c.resume(), 'go'),
         m.practice ? btn('REINICIAR ETAPA', () => c.retry(), 'warn') : null,
-        btn(m.practice ? 'SALIR DE LA PRÁCTICA' : 'ABANDONAR MISIÓN', () => c.abandon(), 'bad'),
+        btn(c.seasonRace ? 'ABANDONAR CARRERA (SIN PUNTOS)' : m.practice ? 'SALIR DE LA PRÁCTICA' : 'ABANDONAR MISIÓN', () => c.abandon(), 'bad'),
       ),
       h('div', { class: 'row', style: 'margin-top:10px' },
         btn(c.audio.muted ? 'SONIDO: NO' : 'SONIDO: SÍ', () => { c.audio.setMuted(!c.audio.muted); c.openPause(); }),

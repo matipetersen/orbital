@@ -29,6 +29,15 @@ export interface StageResult {
   field?: number;
   reward: number;
   reason: string;
+  /** Mass starts: every ship id from first to last as the race ended, and the ones that did not finish. */
+  order?: number[];
+  dnf?: number[];
+}
+
+/** What the player flies in a championship race: the season's upgrades and the race setup. */
+export interface Loadout {
+  upgrades: Upgrades;
+  tune: { thrust: number; fuel: number; hull: number; turn: number };
 }
 
 const DATA_GATE = 10;
@@ -90,12 +99,13 @@ export class Mission {
 
   constructor(
     readonly meta: Meta,
-    opts: { stage?: number; practice?: boolean; race?: RaceDef } = {},
+    opts: { stage?: number; practice?: boolean; race?: RaceDef; loadout?: Loadout } = {},
   ) {
     this.race = opts.race ?? RACES[0];
     this.practice = !!opts.practice;
+    this.loadout = opts.loadout ?? null;
     this.stageIdx = opts.stage ?? 0;
-    if (!this.practice) {
+    if (!this.practice && !this.loadout) {
       // Every run starts from scratch: no technology and no data carried over.
       meta.upgrades = zeroUpgrades();
       meta.data = 0;
@@ -109,10 +119,20 @@ export class Mission {
 
   /** Technology of this run (practice always flies the base ship). */
   get upgrades(): Upgrades {
+    if (this.loadout) return this.loadout.upgrades;
     return this.practice ? zeroUpgrades() : this.meta.upgrades;
   }
 
+  /** True when this run pays arcade data and counts for records (not practice, not the championship). */
+  private get banks(): boolean {
+    return !this.practice && !this.loadout;
+  }
+
   readonly practice: boolean;
+  /** Championship race: the season's ship, no arcade data or records. */
+  readonly loadout: Loadout | null;
+  /** Ship id that did not finish (out of lives or retired), for the classification. */
+  private retired = false;
   readonly race: RaceDef;
 
   get stageCount(): number {
@@ -129,6 +149,13 @@ export class Mission {
     this.arena = new Arena(def);
     const stats = shipStats(this.upgrades);
     stats.fuelMax = Math.round(stats.fuelMax * (def.tank ?? 1));
+    const tune = this.loadout?.tune;
+    if (tune) {
+      stats.thrust *= tune.thrust;
+      stats.fuelMax = Math.round(stats.fuelMax * tune.fuel);
+      stats.hullMax = Math.round(stats.hullMax * tune.hull);
+      stats.turnRate *= tune.turn;
+    }
     this.player = this.arena.addShip({ isPlayer: true, name: 'Tú', color: '#00f0ff', stats, start: def.start, orbit: def.startAt });
     this.rivals = [];
     this.drivers = [];
@@ -137,15 +164,18 @@ export class Mission {
       const rnd = mulberry32(5000 + idx);
       f.slots.forEach((ang, k) => {
         const skill = def.rival.skill * (0.9 + 0.2 * rnd());
+        const pilot = f.roster?.[k];
         const ship = this.arena.addShip({
           isPlayer: false,
-          name: `${def.rival.name} ${k + 1}`,
-          color: FIELD_COLORS[k % FIELD_COLORS.length],
-          stats: { thrust: 150 * skill, turnRate: 3.6, fuelMax: 100, hullMax: 100, shield: 0, boost: 0 },
+          name: pilot?.name ?? `${def.rival.name} ${k + 1}`,
+          color: pilot?.color ?? FIELD_COLORS[k % FIELD_COLORS.length],
+          stats: { thrust: pilot?.thrust ?? 150 * skill, turnRate: 3.6, fuelMax: 100, hullMax: 100, shield: 0, boost: 0 },
           start: { body: f.body, angle: (ang * Math.PI) / 180 },
           infiniteFuel: true,
         });
-        const ai = { ...(def.rival.ai ?? RIVAL_AI), noise: (def.rival.ai?.noise ?? 0.2) * (0.6 + 0.9 * rnd()), interval: 0.25, pace: 0.86 + 0.14 * rnd() };
+        const noise = pilot ? pilot.noise : (def.rival.ai?.noise ?? 0.2) * (0.6 + 0.9 * rnd());
+        const pace = pilot ? pilot.pace : 0.86 + 0.14 * rnd();
+        const ai = { ...(def.rival.ai ?? RIVAL_AI), noise, interval: 0.25, pace };
         const drv = new RivalDriver(mulberry32(7000 + idx * 31 + k), ai, 0);
         drv.ai.nextAt = rnd() * ai.interval;
         this.rivals.push(ship);
@@ -171,7 +201,7 @@ export class Mission {
       this.drivers = [this.driver];
     }
     this.lives = MISSION_LIVES;
-    if (!this.practice) {
+    if (this.banks) {
       const pr = raceProgress(this.meta, this.race.id, this.stageCount);
       pr.reached = Math.max(pr.reached, idx + 1);
     }
@@ -235,19 +265,49 @@ export class Mission {
     ship.finishPad = { body: bi, pad: padIdx };
   }
 
+  /** Race order score: finished ships by landing time, the rest by gates passed and distance to the next target. */
+  private score(s: Ship): number {
+    if (s.finished) return 1e9 - s.finishTime;
+    const tmp = { x: 0, y: 0 };
+    this.arena.objective(s, tmp);
+    return s.nextGate * 1e5 - Math.hypot(s.x - tmp.x, s.y - tmp.y);
+  }
+
   /** Position of the player among all ships, by gates passed and distance to the next target. */
   rank(): { pos: number; total: number } {
-    const a = this.arena;
-    const tmp = { x: 0, y: 0 };
-    const score = (s: Ship): number => {
-      if (s.finished) return 1e9 - s.finishTime;
-      a.objective(s, tmp);
-      return s.nextGate * 1e5 - Math.hypot(s.x - tmp.x, s.y - tmp.y);
-    };
-    const mine = score(this.player);
+    const mine = this.score(this.player);
     let ahead = 0;
-    for (const r of this.rivals) if (score(r) > mine) ahead++;
+    for (const r of this.rivals) if (this.score(r) > mine) ahead++;
     return { pos: ahead + 1, total: this.rivals.length + 1 };
+  }
+
+  /** Every ship id in race order right now; a retired player goes last. */
+  classification(): number[] {
+    const ships = [this.player, ...this.rivals];
+    const order = ships.sort((x, y) => this.score(y) - this.score(x)).map((s) => s.id);
+    if (this.retired) return [...order.filter((id) => id !== this.player.id), this.player.id];
+    return order;
+  }
+
+  /** Arena clock when the first ship landed, or null. */
+  firstFinish(): number | null {
+    const id = this.arena.finishOrder[0];
+    return id === undefined ? null : this.arena.ships[id].finishTime;
+  }
+
+  /** Lap the player is on (1-based) and the number of laps, in a mass start. */
+  lap(): { lap: number; laps: number } | null {
+    const f = this.def.field;
+    if (!f) return null;
+    const ring = this.arena.gates.length;
+    return { lap: Math.min(f.laps, Math.floor(this.player.nextGate / ring) + 1), laps: f.laps };
+  }
+
+  /** Championship: leave the race; you are classified as not finishing. */
+  retire(): void {
+    if (this.phase === 'cleared' || this.over) return;
+    this.retired = true;
+    this.finishStage(false, 'Abandonaste la carrera.');
   }
 
   /** Positive when the player is ahead, in gates. */
@@ -315,7 +375,12 @@ export class Mission {
     }
 
     const field = this.def.field;
-    if (field) {
+    if (field?.closing !== undefined) {
+      // Championship: the race ends when you land, when everybody else has, or when the chequered flag closes it.
+      if (this.player.finished) this.finishStage(true);
+      else if (this.phase !== 'cleared' && (a.finishOrder.length >= this.rivals.length || (this.firstFinish() !== null && a.clock - this.firstFinish()! >= field.closing)))
+        this.finishStage(true, 'Bandera a cuadros: la carrera se cerró antes de que aterrizaras.');
+    } else if (field) {
       if (this.player.finished) this.finishStage(a.finishOrder.indexOf(this.player.id) < field.podium);
       else if (a.finishOrder.length >= field.podium && this.phase === 'race') this.finishStage(false);
     } else if (this.player.finished && a.winner === this.player.id) this.finishStage(true);
@@ -380,14 +445,14 @@ export class Mission {
   private rest(body: number): void {
     const banked = this.carried;
     this.earned += banked;
-    if (!this.practice) this.meta.data += banked;
+    if (this.banks) this.meta.data += banked;
     this.carried = 0;
     this.kits = kitCount(this.upgrades);
     this.beacon = null;
     this.gain(DATA_LAND, 'Estación alcanzada');
     // Landing gain is banked immediately too.
     this.earned += this.carried;
-    if (!this.practice) this.meta.data += this.carried;
+    if (this.banks) this.meta.data += this.carried;
     this.carried = 0;
     this.note(banked > 0 ? `Datos guardados: ${banked}` : 'Punto de control', 'good');
     void body;
@@ -395,7 +460,7 @@ export class Mission {
 
   private onPlayerDeath(reason: string, x: number, y: number): void {
     this.deaths++;
-    this.meta.deaths += this.practice ? 0 : 1;
+    this.meta.deaths += this.banks ? 1 : 0;
     const a = this.arena;
     // The lost data waits where you died, attached to the nearest body.
     let near = 0;
@@ -414,7 +479,7 @@ export class Mission {
     this.carried = 0;
     if (!this.practice) this.lives--;
     this.note(`Muerte: ${reason}${lost > 0 && !this.practice ? ` · ${lost} datos quedaron en la baliza` : ''}`, 'bad');
-    if (!this.practice) {
+    if (this.banks) {
       // The wreck is not wasted: the telemetry of a lost ship pays for improvements.
       const wreck = DATA_WRECK + 6 * Math.min(this.stageIdx, 12);
       this.earned += wreck;
@@ -425,6 +490,7 @@ export class Mission {
 
   private afterDeath(): void {
     if (!this.practice && this.lives <= 0) {
+      if (this.loadout) this.retired = true;
       this.finishStage(false, 'Te quedaste sin vidas en esta etapa.');
       return;
     }
@@ -461,6 +527,26 @@ export class Mission {
 
   private finishStage(won: boolean, lost = ''): void {
     const a = this.arena;
+    if (this.loadout && this.def.field) {
+      // Championship: a full classification, no arcade rewards; the season pays the points.
+      const order = this.classification();
+      const place = this.retired ? undefined : order.indexOf(this.player.id) + 1;
+      this.result = {
+        won: !this.retired,
+        time: this.player.finished ? this.player.finishTime : a.clock,
+        rivalTime: this.firstFinish() ?? a.clock,
+        place,
+        field: order.length,
+        reward: 0,
+        reason: lost || `Terminaste ${place}º de ${order.length}.`,
+        order,
+        dnf: this.retired ? [this.player.id] : [],
+      };
+      this.carried = 0;
+      this.phase = 'cleared';
+      this.over = this.retired ? 'failed' : 'won';
+      return;
+    }
     const last = this.stageIdx === this.stageCount - 1;
     const time = this.player.finished ? this.player.finishTime : a.clock;
     const rivalTime = this.rival.finished ? this.rival.finishTime : a.clock;
@@ -524,7 +610,7 @@ export class Mission {
   private endMission(kind: 'won' | 'failed'): void {
     this.over = kind;
     if (this.phase !== 'cleared') this.phase = 'failed';
-    if (this.practice || this.recorded) return;
+    if (!this.banks || this.recorded) return;
     this.recorded = true;
     if (kind === 'won') raceProgress(this.meta, this.race.id, this.stageCount).won = true;
     addRecord(this.meta, { race: this.race.id, stages: this.stagesCleared, time: this.clearedTime, data: this.earned, won: kind === 'won', deaths: this.deaths });

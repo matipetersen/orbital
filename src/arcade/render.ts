@@ -2,6 +2,7 @@ import { FLOAT_REACH, ROTATE_REACH } from '../input/input';
 import { COLORS, lineStroke, neonStroke, quality } from '../render/neon';
 import { P, type View, proj, screenAngle } from '../render/view';
 import { SAFE } from '../render/safe';
+import { POINTS } from './season';
 import { btn, meter, text } from '../render/hud';
 import { circlePath } from '../render/world';
 import { type Ui } from '../ui/ui';
@@ -707,18 +708,39 @@ export function drawArcadeHud(ctx: CanvasRenderingContext2D, g: ArcadeGame, widt
 
   // Top centre: stage, rings, time and the lead over the rival.
   const cx = (150 + width - 8 - 3 * 50 - 8) / 2;
-  const ringTxt = `ETAPA ${m.stageIdx + 1} · ${m.def.name.toUpperCase()}`;
+  const ringTxt = m.def.field?.closing !== undefined ? `${m.race.subtitle.replace('Campeonato · ', '').toUpperCase()} · ${m.def.name.toUpperCase()}` : `ETAPA ${m.stageIdx + 1} · ${m.def.name.toUpperCase()}`;
   text(ctx, ringTxt, cx, TOP + 18, AMBER, 12, true);
   const total = p.route.length;
   const done = (sh: Ship): string => (a.gatesDone(sh) ? 'ATERRIZAR' : `${sh.nextGate}/${total}`);
   const fieldDef = a.def.field;
   const rank = fieldDef ? m.rank() : null;
-  text(ctx, fieldDef && rank ? `AROS ${done(p)}  ·  POSICIÓN ${rank.pos}/${rank.total}  ·  ${Math.max(0, a.clock).toFixed(0)} s` : `AROS ${done(p)}  ·  RIVAL ${done(m.rival)}  ·  ${Math.max(0, a.clock).toFixed(0)} s`, cx, TOP + 34, COLORS.hud, 12, true);
+  const lap = m.lap();
+  const champ = fieldDef?.closing !== undefined;
+  const status = champ && rank && lap
+    ? `VUELTA ${lap.lap}/${lap.laps}  ·  POSICIÓN ${rank.pos}/${rank.total}  ·  ${Math.max(0, a.clock).toFixed(0)} s`
+    : fieldDef && rank
+    ? `AROS ${done(p)}  ·  POSICIÓN ${rank.pos}/${rank.total}  ·  ${Math.max(0, a.clock).toFixed(0)} s`
+    : `AROS ${done(p)}  ·  RIVAL ${done(m.rival)}  ·  ${Math.max(0, a.clock).toFixed(0)} s`;
+  text(ctx, status, cx, TOP + 34, COLORS.hud, 12, true);
   const lead = m.gateLead();
   const padName = a.bodies[p.finishPad.body].def.pads?.[p.finishPad.pad]?.name ?? 'la meta';
   let leadTxt = 'RIVAL AL PAR';
   let leadColor = COLORS.hud;
-  if (fieldDef && rank) {
+  const first = m.firstFinish();
+  if (champ && rank) {
+    // Championship: points for the top ten; once someone lands, the chequered flag counts down.
+    if (first !== null && !p.finished) {
+      const left = Math.max(0, fieldDef!.closing! - (a.clock - first));
+      leadTxt = `BANDERA A CUADROS EN ${left.toFixed(0)} s`;
+      leadColor = left < 15 ? BAD : AMBER;
+    } else if (a.gatesDone(p)) {
+      leadTxt = 'ATERRIZÁ EN TU PLATAFORMA';
+      leadColor = GOOD;
+    } else {
+      leadTxt = rank.pos <= 10 ? `EN LOS PUNTOS (+${POINTS[rank.pos - 1]})` : `FUERA DE LOS PUNTOS · ${rank.pos - 10} PUESTOS AL 10º`;
+      leadColor = rank.pos <= 10 ? GOOD : AMBER;
+    }
+  } else if (fieldDef && rank) {
     const inPodium = rank.pos <= fieldDef.podium;
     leadTxt = a.finishOrder.length ? `${a.finishOrder.length}/${fieldDef.podium} EN EL PODIO` : `PODIO: LOS ${fieldDef.podium} PRIMEROS EN ATERRIZAR`;
     leadColor = inPodium ? GOOD : AMBER;

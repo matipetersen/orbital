@@ -109,6 +109,18 @@ la velocidad ideal (entre la circular y la de escape) y una escalera de velocida
 `makeGrandPrix` (en `procgen.ts`) genera cada día una grilla de 9 a 12 naves alrededor de un planeta, dos vueltas
 y aterrizaje en la Meta; el podio son los tres primeros (`StageDef.field`, `Mission.rivals`, `Mission.rank()`).
 
+### Campeonato Orbital
+
+`src/arcade/season.ts` (lógica, sin interfaz) y `src/ui/seasonScreens.ts`: una temporada estilo Fórmula 1. Ocho
+Grandes Premios de 20 naves (diez escuderías de dos pilotos con nombre, talento y nave propios) a tres vueltas, con
+puntos 25-18-15-12-10-8-6-4-2-1, campeonato de pilotos y de constructores. La carrera termina cuando aterrizás, o
+45 s después de que aterriza el ganador (bandera a cuadros); los que siguen en vuelo se clasifican por avance. Entre
+carreras: configuración de la nave (mapa de motor y casco), mejoras pagadas con los créditos del equipo (duran toda
+la temporada) y una decisión de escudería con consecuencias (patrocinadores, fichajes, piezas ilegales con riesgo
+de descalificación, prioridad del compañero, clima). Cada circuito tiene un rasgo (rocas, gravedad, atmósfera,
+lunas rápidas) y las escuderías rivales desarrollan sus naves carrera a carrera. La temporada se guarda en
+`localStorage` (`orbital.season.v1`).
+
 ### Carrera Relámpago
 
 `src/arcade/relampago.ts`: cuatro etapas fijas de unos 30 s (salto, caída libre, sprint y slalom) para una misión de unos
