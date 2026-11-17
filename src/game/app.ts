@@ -83,14 +83,20 @@ export class App {
   }
 
   /** The arcade race: its own flow, drawn on the same canvas. */
-  openArcade(): void {
+  openArcade(season = false): void {
     if (!this.arcade) {
       this.arcade = new ArcadeController(this.overlay, this.ui, this.input, this.audio, () => this.showTitle());
       this.arcade.resize(this.width, this.height);
     }
     this.mode = 'arcade';
     this.flight = null;
-    this.arcade.openRaces();
+    if (season) this.arcade.openSeason();
+    else this.arcade.openRaces();
+  }
+
+  /** The championship season, run by the arcade controller. */
+  openSeason(): void {
+    this.openArcade(true);
   }
 
   hasSave(): boolean {

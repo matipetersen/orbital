@@ -58,6 +58,12 @@ const ART: Record<string, string> = {
     `<path d="M30 88 V66 H58 V88 M58 88 V50 H100 V88 M100 88 V74 H128 V88" fill="rgba(0,240,255,.10)" stroke="${INK}" stroke-width="1.5"/>` +
     label(44, 80, '2', INK, 11) + label(79, 74, '1', AMBER, 14) + label(114, 84, '3', INK, 11) +
     ship(44, 54, -90, INK, 0.9) + ship(79, 38, -90, AMBER, 1) + ship(114, 62, -90, INK, 0.9) + label(80, 99, 'top 3 = ganás', DIM, 8),
+  Campeonato:
+    // A chequered flag and the points for the first places.
+    [0, 1, 2, 3].map((r) => [0, 1, 2, 3, 4].map((k) => ((r + k) % 2 ? '' : `<rect x="${18 + k * 8}" y="${24 + r * 8}" width="8" height="8" fill="${INK}" opacity=".85"/>`)).join('')).join('') +
+    `<path d="M18 24 V84" stroke="${DIM}" stroke-width="1.6"/><rect x="18" y="24" width="40" height="32" fill="none" stroke="${INK}" stroke-width="1"/>` +
+    label(108, 34, '1º  25 pts', AMBER, 9) + label(108, 50, '2º  18 pts', INK, 9) + label(108, 66, '3º  15 pts', INK, 9) + label(108, 82, '… 10º  1 pt', DIM, 8) +
+    label(80, 99, '8 GP · 20 naves · 3 vueltas', DIM, 8),
   Equipo:
     [26, 62, 98].map((x) => `<rect x="${x}" y="30" width="30" height="30" fill="rgba(0,240,255,.12)" stroke="${INK}" stroke-width="1.6"/>`).join('') +
     `<rect x="134" y="30" width="22" height="30" fill="none" stroke="${DIM}" stroke-width="1.4" stroke-dasharray="3 3"/>` +
