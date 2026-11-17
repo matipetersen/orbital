@@ -55,7 +55,16 @@ app.showTitle();
 // Offline support when installed from a normal host; hosts that block service workers just skip it.
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(() => undefined);
+    // When a new version's service worker takes over an already-controlled page, reload once to show it.
+    const updating = !!navigator.serviceWorker.controller;
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!updating || reloaded) return;
+      reloaded = true;
+      app.save();
+      location.reload();
+    });
+    navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).catch(() => undefined);
   });
 }
 
